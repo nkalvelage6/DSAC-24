@@ -1,0 +1,15 @@
+---
+title: "DSAC 24 Football"
+author: "Noah Kalvelage"
+format: html
+editor: visual
+---
+
+## 
+
+```{r}
+#| label: read-csvs
+
+combine_results <- read.csv("combine_results.csv")
+
+```
