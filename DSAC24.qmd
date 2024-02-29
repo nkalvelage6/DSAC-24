@@ -8,8 +8,18 @@ editor: visual
 ## 
 
 ```{r}
+#| label: load-packages
+
+library(tidyverse)
+
+```
+
+```{r}
 #| label: read-csvs
 
 combine_results <- read.csv("combine_results.csv")
-
+passing_stats <- read.csv("Career_Stats_Passing.csv")
+receiving_stats <- read.csv("Career_Stats_Receiving.csv")
+rush_stats <- read.csv("Career_Stats_Rushing.csv")
+defensive_stats <- read.csv("Career_Stats_Defensive.csv")
 ```
