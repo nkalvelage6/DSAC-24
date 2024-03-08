@@ -1,0 +1,166 @@
+---
+title: "DSAC RB Analysis"
+format: html
+editor: visual
+---
+
+```{r}
+# Load necessary libraries
+library(tidyverse)
+library(readr)
+library(ggplot2)
+library(corrplot)
+
+# Load the datasets + process 
+combine_results <- read_csv("combine_results.csv")
+career_stats <- read_csv("Career_Stats_Rushing.csv")
+
+career_stats <- career_stats %>%
+  mutate(Name = gsub(" *, *", ", ", Name), 
+         Name = strsplit(as.character(Name), ", "), 
+         Name = sapply(Name, function(x) paste(trimws(rev(x)), collapse = " "))) 
+
+combine_results <- combine_results %>%
+  mutate(name = tolower(name))
+
+career_stats <- career_stats %>%
+  mutate(Name = tolower(Name))
+
+# Make common player names in both datasets
+combine_results <- combine_results %>%
+  mutate(name = tolower(name)) %>%
+  filter(pos == "RB") %>%
+  select(name, pos, `40_yard`, `bench_press`, `vert_leap_in`, `broad_jump_in`)
+
+
+career_stats <- career_stats %>%
+  mutate(Name = tolower(Name),
+         `Rushing Yards` = as.numeric(`Rushing Yards`),
+         `Rushing TDs` = as.numeric(`Rushing TDs`)) %>%
+  
+  # Replace errors with NA for non-numeric conversions
+  mutate(`Rushing Yards` = ifelse(is.na(`Rushing Yards`), 0, `Rushing Yards`),
+         `Rushing TDs` = ifelse(is.na(`Rushing TDs`), 0, `Rushing TDs`)) %>%
+  group_by(Name) %>%
+  summarise(`Total Rushing Yards` = sum(`Rushing Yards`, na.rm = TRUE),
+            `Total Rushing TDs` = sum(`Rushing TDs`, na.rm = TRUE))
+
+# Merge datasets based on player names
+merged_data <- merge(combine_results, career_stats, by.x = "name", by.y = "Name")
+```
+
+```{r}
+# 40-Yard Dash Time vs. Total Rushing Yards
+ggplot(merged_data, aes(x = `40_yard`, y = `Total Rushing Yards`)) +
+  geom_point(aes(color = `40_yard`), alpha = 0.7) +
+  geom_smooth(method = "lm", se = FALSE, color = "dodgerblue") +
+  labs(title = "Impact of 40-Yard Dash Time on NFL Success",
+       x = "40-Yard Dash Time (seconds)",
+       y = "Total Rushing Yards",
+       color = "40-Yard Dash Time") +
+  theme_minimal() +
+  scale_color_gradient(low = "dodgerblue", high = "darkorange")
+```
+
+```{r}
+# Bench Press Reps vs. Total Rushing Yards
+ggplot(merged_data, aes(x = bench_press, y = `Total Rushing Yards`)) +
+  geom_point(aes(color = bench_press), alpha = 0.7) +
+  geom_smooth(method = "lm", se = FALSE, color = "dodgerblue") +
+  labs(title = "Impact of Bench Press Reps on NFL Success",
+       x = "Bench Press Reps",
+       y = "Total Rushing Yards",
+       color = "Bench Press Reps") +
+  theme_minimal() +
+  scale_color_gradient(low = "dodgerblue", high = "darkorange")
+
+```
+
+```{r}
+# Vertical Leap vs. Total Rushing Yards
+ggplot(merged_data, aes(x = vert_leap_in, y = `Total Rushing Yards`)) +
+  geom_point(aes(color = vert_leap_in), alpha = 0.7) +
+  geom_smooth(method = "lm", se = FALSE, color = "dodgerblue") +
+  labs(title = "Impact of Vertical Leap on NFL Success",
+       x = "Vertical Leap (inches)",
+       y = "Total Rushing Yards",
+       color = "Vertical Leap") +
+  theme_minimal() +
+  scale_color_gradient(low = "dodgerblue", high = "darkorange")
+
+```
+
+```{r}
+# Broad Jump Distance vs. Total Rushing Yards
+ggplot(merged_data, aes(x = broad_jump_in, y = `Total Rushing Yards`)) +
+  geom_point(aes(color = broad_jump_in), alpha = 0.7) +
+  geom_smooth(method = "lm", se = FALSE, color = "dodgerblue") +
+  labs(title = "Impact of Broad Jump Distance on NFL Success",
+       x = "Broad Jump Distance (inches)",
+       y = "Total Rushing Yards",
+       color = "Broad Jump Distance") +
+  theme_minimal() +
+  scale_color_gradient(low = "dodgerblue", high = "darkorange")
+
+
+```
+
+```{r}
+#| label: touchdowns
+# 40-Yard Dash Time vs. Total Rushing Touchdowns
+ggplot(merged_data, aes(x = `40_yard`, y = `Total Rushing TDs`)) +
+  geom_point(aes(color = `40_yard`), alpha = 0.7) +
+  geom_smooth(method = "lm", se = FALSE, color = "dodgerblue") +
+  labs(title = "Impact of 40-Yard Dash Time on NFL Rushing Touchdowns",
+       x = "40-Yard Dash Time (seconds)",
+       y = "Total Rushing Touchdowns") +
+  theme_minimal() +
+  scale_color_gradient(low = "dodgerblue", high = "darkorange")
+
+# Bench Press Reps vs. Total Rushing Touchdowns
+ggplot(merged_data, aes(x = bench_press, y = `Total Rushing TDs`)) +
+  geom_point(aes(color = bench_press), alpha = 0.7) +
+  geom_smooth(method = "lm", se = FALSE, color = "dodgerblue") +
+  labs(title = "Impact of Bench Press Reps on NFL Rushing Touchdowns",
+       x = "Bench Press Reps",
+       y = "Total Rushing Touchdowns") +
+  theme_minimal() +
+  scale_color_gradient(low = "dodgerblue", high = "darkorange")
+
+# Vertical Leap vs. Total Rushing Touchdowns
+ggplot(merged_data, aes(x = vert_leap_in, y = `Total Rushing TDs`)) +
+  geom_point(aes(color = vert_leap_in), alpha = 0.7) +
+  geom_smooth(method = "lm", se = FALSE, color = "dodgerblue") +
+  labs(title = "Impact of Vertical Leap on NFL Rushing Touchdowns",
+       x = "Vertical Leap (inches)",
+       y = "Total Rushing Touchdowns") +
+  theme_minimal() +
+  scale_color_gradient(low = "dodgerblue", high = "darkorange")
+
+# Broad Jump Distance vs. Total Rushing Touchdowns
+ggplot(merged_data, aes(x = broad_jump_in, y = `Total Rushing TDs`)) +
+  geom_point(aes(color = broad_jump_in), alpha = 0.7) +
+  geom_smooth(method = "lm", se = FALSE, color = "dodgerblue") +
+  labs(title = "Impact of Broad Jump Distance on NFL Rushing Touchdowns",
+       x = "Broad Jump Distance (inches)",
+       y = "Total Rushing Touchdowns") +
+  theme_minimal() + 
+  scale_color_gradient(low = "dodgerblue", high = "darkorange")
+
+```
+
+```{r}
+#Correlation Matrix 
+data_subset <- merged_data %>%
+  select(`40_yard`, bench_press, vert_leap_in, broad_jump_in, `Total Rushing Yards`, `Total Rushing TDs`)
+
+correlation_matrix_all <- cor(data_subset, use = "complete.obs")
+
+correlation_matrix_all
+
+corrplot(correlation_matrix_all, method = "circle", type = "upper", 
+         tl.col = "black", tl.srt = 45, 
+         title = "Correlation Matrix of Combine Attributes and NFL Success"
+         )
+
+```
