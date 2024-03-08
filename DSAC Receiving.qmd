@@ -60,7 +60,7 @@ ggplot(merged_data, aes(x = `40_yard`, y = `Receiving Yards`)) +
 ```
 No relationship is evident
 
-```{r 2, message = F, warning = F}
+```{r 3, message = F, warning = F}
 ggplot(merged_data, aes(x = `40_yard`, y = `Yards Per Reception`)) +
   geom_point() +
   labs(x = "40 Yard", y = "Yards Per Reception", 
