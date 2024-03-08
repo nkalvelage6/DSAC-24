@@ -27,14 +27,25 @@ merged_data <- merge(combine_results, receiving, by.x = "name", by.y = "Name", a
 
 ```
 
+```{r}
+view(merged_data)
+```
+
 ### Correlation Heatmats
 ```{r}
-column_names <- names(merged_data)
+selected_variables <- merged_data[, c("height_in", "weight_lbs", "hand_size_in", 
+                                      "40_yard", "bench_press", "vert_leap_in", 
+                                      "broad_jump_in", "shuttle", "3cone", 
+                                      "Receptions", "Receiving Yards", 
+                                      "Yards Per Reception", "Receiving TDs", 
+                                      "First Down Receptions")]
 
-# Print the column names
-print(column_names)
-```
-```{r}
+selected_variables <- as.data.frame(sapply(selected_variables, function(x) as.numeric(as.character(x))))
 
+# Calculate the correlation matrix
+correlation_matrix <- cor(selected_variables, use = "pairwise.complete.obs")
+
+# Create a correlation heatmap
+corrplot(correlation_matrix, method = "color", type = "upper", tl.col = "black", tl.srt = 45)
 ```
 
