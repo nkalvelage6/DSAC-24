@@ -1,0 +1,25 @@
+---
+title: "DSAC Analysis"
+format: html
+editor: visual
+---
+
+```{r}
+library(readr)
+library(tidyverse)
+library(tidymodels)
+combine_results <- read_csv("combine_results.csv")
+receiving<- read_csv("Career_Stats_Receiving.csv")
+
+```
+
+### Creating One Single Dataset
+```{r}
+receiving <- subset(receiving, Year >= 1987)
+receiving$Name <- sapply(strsplit(receiving$Name, ", "), function(x) paste(rev(x), collapse = " "))
+
+names(combine_results)[names(df) == "name"] <- "Name"
+view(combine_results)
+#merged_data <- merge(receiving, combine_results, by = "name", all = TRUE)
+```
+
