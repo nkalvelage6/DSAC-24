@@ -8,9 +8,13 @@ editor: visual
 library(readr)
 library(tidyverse)
 library(tidymodels)
+library(ggplot2)
+library(corrplot)
+```
+
+```{r}
 combine_results <- read_csv("combine_results.csv")
 receiving<- read_csv("Career_Stats_Receiving.csv")
-
 ```
 
 ### Creating One Single Dataset
@@ -18,8 +22,19 @@ receiving<- read_csv("Career_Stats_Receiving.csv")
 receiving <- subset(receiving, Year >= 1987)
 receiving$Name <- sapply(strsplit(receiving$Name, ", "), function(x) paste(rev(x), collapse = " "))
 
-names(combine_results)[names(df) == "name"] <- "Name"
-view(combine_results)
-#merged_data <- merge(receiving, combine_results, by = "name", all = TRUE)
+merged_data <- merge(combine_results, receiving, by.x = "name", by.y = "Name", all = TRUE)
+
+
+```
+
+### Correlation Heatmats
+```{r}
+column_names <- names(merged_data)
+
+# Print the column names
+print(column_names)
+```
+```{r}
+
 ```
 
