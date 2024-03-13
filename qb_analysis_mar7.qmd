@@ -1,0 +1,203 @@
+---
+title: "dsac_explore_analysis"
+format: html
+editor: visual
+
+
+#so right now i am just using the files as they are, later i plan to and hopefuly will figure out how to make separate files that are the averaged data so that way there arent multiple data points for like the same hand size (for example) and what im comparing it to.
+
+#also, this will be helpful because there is some data i want to get rid of like when there is an accuracy percentage of 100% or 0% but only because they didnt do any rushing yards or pass once, etc.
+---
+
+```{r importing}
+
+#there may be more imports than needed but after trying many things, i didnt want to delete any in case they were used
+library(readr)
+library(tidyverse)
+library(tidymodels)
+library(ggplot2)
+library(corrplot)
+library(dplyr)
+library(stringr)
+
+#taking in passing, rushing, and combine
+combine <- read_csv("combine_results.csv")
+passing <- read_csv("Career_Stats_Passing.csv")
+rushing <- read_csv("Career_Stats_Rushing.csv")
+
+```
+
+```{r sorting_by_year_and_position}
+#getting the sets down so that it is only qbs and after 1987
+cleaned_passing <- passing |>
+  filter(Position == "QB" & Year >= 1987)
+
+cleaned_rushing <- rushing |>
+  filter(Position == "QB" & Year >= 1987)
+
+cleaned_combine <- combine |>
+  filter(pos == "QB")
+```
+
+```{r getting_rid_of_position_column}
+#getting rid of position column, this was more just because it was frustrating to look at QB over and over - mostly just cosmetic
+cleaned_rushing <- cleaned_rushing[, !(names(cleaned_rushing) %in% c("Position"))]
+cleaned_passing <- cleaned_passing[, !(names(cleaned_passing) %in% c("Position"))]
+cleaned_combine <- cleaned_combine[, !(names(cleaned_combine) %in% c("pos"))]
+```
+
+```{r viewing_all}
+#wanted to see what the individual cleaned files looked like
+view(cleaned_passing)
+view(cleaned_rushing)
+view(cleaned_combine)
+```
+
+```{r merging_clean_rushing_and_passing}
+#merging the rushing and passing together 
+clean_data <- merge(cleaned_rushing, cleaned_passing, by = c("Year", "Name", "Team", "Player Id", "Games Played"), all = TRUE)
+```
+
+```{r viewing_the_clean_data}
+#viewing that clean data
+view(clean_data)
+```
+
+```{r renaming_columns_in_combine}
+#renaming the name and year so that the name is the same for combine and regular data and so that the year for combine does not get confused with that of the regular season playing
+cleaned_combine <- cleaned_combine %>% 
+  rename(Name = name)
+cleaned_combine <- cleaned_combine %>% 
+  rename(combine_Year = year)
+```
+
+```{r fixing_name_order_in_combine}
+#in the combine, they are listed as first and last, but in the regular they do last name comma first so i change that here so the combine is in the same format. additionally, i take out the periods in the abbreviated names since majority (not all) are formatted that way in the regular data
+
+cleaned_combine <- cleaned_combine %>%
+  mutate(Name = str_replace(Name, "(\\w+\\.?\\w*(?:\\.\\w*)?)\\s+(\\w+)", "\\2, \\1"))
+  cleaned_combine$Name <- gsub("\\.", "", cleaned_combine$Name)
+```
+
+```{r fixing_Yates_and_Griffin}
+#these two players specifially were listed differently between the two tables so i manually eddited them below. i hopefully did not miss any other players with issues like this but i beleive these were the only two
+
+row_index1 <- grep("Yates, Taylor", cleaned_combine$Name)
+
+# If 'Name' is found, rewrite it to "Yates, T.J."
+if (length(row_index1) > 0) {
+  cleaned_combine[row_index1, "Name"] <- "Yates, T.J."
+}
+
+row_index2 <- grep("Griffin, Robert", cleaned_combine$Name)
+
+# If 'Name' is found, rewrite it to ""
+if (length(row_index2) > 0) {
+  cleaned_combine[row_index2, "Name"] <- "Griffin III, Robert"
+}
+
+```
+
+```{r view_cleaned_combine}
+#viewing it post removal of those two guys
+view(cleaned_combine)
+```
+
+```{r merging_combine_and_reg}
+#merging the regular stats and the combine by name prioritizing the players in the regular stats
+merged_data <- merge(clean_data, cleaned_combine, by = "Name", all.x = TRUE)
+
+# View the merged data
+View(merged_data)
+```
+
+```{r change_pass_completion_column}
+#changing the column name for pass completion percentage to avoid confusion
+merged_data <- merged_data %>%
+  rename("Pass Completion Percentage" = "Completion Percentage")
+```
+
+```{r deleting_specific_names}
+#these were the men that had regular stats but not combine. i am manually deleting them since due to the many NAs in colmuns that i still needed, i was having too many errors with trying to go about this systematically so I just removed them individually
+
+names_to_delete <- c("Cassel, Matt", "Hill, Shaun", "Lewis, Thad", "McGloin, Matt", "Moore, Matt", "Webb, Joe", "Tanney, Alex", "Simms, Matt")
+
+# Create a new data frame excluding rows with the specified names
+merged_data <- merged_data[!merged_data$Name %in% names_to_delete, ]
+
+view(merged_data)
+```
+
+```{r no_entries_for_zero_games}
+#I did not want any entries for zero games played because it gave zeros I did not want for the percentage sections since getting 0% when given the opportunity vs 0% without any trials are different 
+
+merged_data <- merged_data[merged_data$"Games Played" != 0, , drop = FALSE]
+view(merged_data)
+```
+
+```{r make_files_for_avgd_for_rushandpass}
+#make files to eventually compute averages
+
+#=columns_to_keep <- c("Name", "Rushing Attempts Per Game", "Yards Per Carry", "Rushing Yards Per Game", "Percentage of Rushing First Downs")
+#avged_merged_rush_data <- merged_data[, columns_to_keep, drop = FALSE]
+#view(avged_merged_rush_data)
+
+#columns_to_keep <- c("Name", "Pass Completion Percentage", "Passing Yards Per Attempt", "Passing Yards Per Game", "Percentage of TDs per Attempts", "Int Rate", "Passer Rating")
+#avged_merged_pass_data <- merged_data[, columns_to_keep, drop = FALSE]
+#view(avged_merged_pass_data)
+```
+
+```{r}
+
+#avged_merged_rush_data <- avged_merged_rush_data [merged_data$"Rushing Attempts Per Game" != 0.0, , drop = FALSE]
+
+#avged_merged_pass_data <- avged_merged_pass_data [merged_data$"Passer Rating" != 0.0, , drop = FALSE]
+
+#rownames(avged_merged_rush_data) <- NULL
+#rownames(avged_merged_pass_data) <- NULL
+```
+
+```{r}
+#avged_merged_rush_data <- avged_merged_rush_data[-368, ]
+```
+
+```{r}
+#avged_merged_rush_dataa <- avged_merged_rush_data %>%
+ # group_by(Name) %>%
+  #summarize(
+    #"Avg Rushing Attempts Per Game" = mean("Rushing Attempts Per Game", na.rm = TRUE),
+  #  "Avg Yards Per Carry" = mean("Yards Per Carry", na.rm = TRUE),
+  #  "Avg Rushing Yards Per Game" = mean("Rushing Yards Per Game", na.rm = TRUE),
+  #  "Avg Percentage of Rushing First Downs" = mean("Percentage of Rushing First Downs", na.rm = #TRUE)
+ # )
+```
+
+```{r}
+#view(avged_merged_rush_data)
+#view(avged_merged_pass_data)
+```
+
+```{r heat-map}
+
+#creating a correlation heat map with different values
+
+select_variables <- merged_data[, c("height_in", "weight_lbs", "hand_size_in","40_yard", "vert_leap_in", "broad_jump_in", "shuttle", "3cone", "Passing Yards Per Game", "Percentage of TDs per Attempts", "Rushing Yards Per Game", "Percentage of Rushing First Downs", "Pass Completion Percentage")]
+
+select_variables <- as.data.frame(sapply(select_variables, function(x) as.numeric(as.character(x))))
+
+# Calculate the correlation matrix
+correlation_matrix <- cor(select_variables, use = "pairwise.complete.obs")
+
+# Create a correlation heatmap
+corrplot(correlation_matrix, method = "color", type = "upper", tl.col = "black", tl.srt = 45, tl.cex=0.5)
+
+
+```
+
+```{r scatter_with_handsize_and_passcompletionpercent}
+plot(merged_data$"hand_size_in", merged_data$"Pass Completion Percentage", main = "Hand Size vs Pass Completion Percentage", xlab = "Hand Size (in.)", ylab = "Pass Completion Percentage", pch=16, cex = 0.8)
+```
+
+```{r}
+plot(merged_data$"height_in", merged_data$"Percentage of Rushing First Downs", main = "Height vs Percentage of Rushing First Downs", xlab = "Height (in.)", ylab = "Percentage of Rushing First Downs", pch=16, cex = 0.8)
+```
