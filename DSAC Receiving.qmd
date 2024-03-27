@@ -18,22 +18,30 @@ receiving<- read_csv("Career_Stats_Receiving.csv")
 ```
 
 ### Creating One Single Dataset
+
 ```{r}
+
+# Filter receiving data frame for Year >= 1987
 receiving <- subset(receiving, Year >= 1987)
+
+# Reverse the order of names in the 'Name' column
 receiving$Name <- sapply(strsplit(receiving$Name, ", "), function(x) paste(rev(x), collapse = " "))
 
-merged_data <- merge(combine_results, receiving, by.x = "name", by.y = "Name", all = TRUE)
+# Merge the data frames
+merged_data_receiving <- merge(combine_results, receiving, by.x = "name", by.y = "Name", all = TRUE)
 
-
+# Remove the 'pos' and 'Player Id' columns from merged_data_receiving
+merged_data_receiving <- merged_data_receiving[, !(names(merged_data_receiving) %in% c("pos", "Player Id"))]
 ```
 
 ```{r}
-view(merged_data)
+view(merged_data_receiving)
 ```
 
 ### Correlation Heatmats
+
 ```{r 1, message = F, warning = F}
-selected_variables <- merged_data[, c("height_in", "weight_lbs", "hand_size_in", 
+selected_variables <- merged_data_receiving[, c("height_in", "weight_lbs", "hand_size_in", 
                                       "40_yard", "bench_press", "vert_leap_in", 
                                       "broad_jump_in", "shuttle", "3cone", 
                                       "Receptions", "Receiving Yards", 
@@ -48,22 +56,25 @@ correlation_matrix <- cor(selected_variables, use = "pairwise.complete.obs")
 # Create a correlation heatmap
 corrplot(correlation_matrix, method = "color", type = "upper", tl.col = "black", tl.srt = 45)
 ```
-Upon inspection of this correlation heatmap, there appears to be little correlation between the NFL combine stats and receiver stats for any combination. 
+
+Upon inspection of this correlation heatmap, there appears to be little correlation between the NFL combine stats and receiver stats for any combination.
 
 ### Scatterplots
 
 ```{r 2, message = F, warning = F}
-ggplot(merged_data, aes(x = `40_yard`, y = `Receiving Yards`)) +
+ggplot(merged_data_receiving, aes(x = `40_yard`, y = `Receiving Yards`)) +
   geom_point() +
   labs(x = "40 Yard", y = "Receiving Yards", 
        title = "Scatterplot between 40 Yard and Receiving Yards")
 ```
+
 No relationship is evident
 
 ```{r 3, message = F, warning = F}
-ggplot(merged_data, aes(x = `40_yard`, y = `Yards Per Reception`)) +
+ggplot(merged_data_receiving, aes(x = `40_yard`, y = `Yards Per Reception`)) +
   geom_point() +
   labs(x = "40 Yard", y = "Yards Per Reception", 
        title = "Scatterplot between 40 Yard and Yards Per Reception")
 ```
+
 No relationship is evident.

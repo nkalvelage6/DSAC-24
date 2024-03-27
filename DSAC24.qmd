@@ -11,15 +11,283 @@ editor: visual
 #| label: load-packages
 
 library(tidyverse)
+library(readr)
+library(ggplot2)
+library(corrplot)
 
 ```
 
 ```{r}
-#| label: read-csvs
+# Load the datasets + process 
+combine_results <- read_csv("combine_results.csv")
+career_stats <- read_csv("Career_Stats_Rushing.csv")
 
-combine_results <- read.csv("combine_results.csv")
-passing_stats <- read.csv("Career_Stats_Passing.csv")
-receiving_stats <- read.csv("Career_Stats_Receiving.csv")
-rush_stats <- read.csv("Career_Stats_Rushing.csv")
-defensive_stats <- read.csv("Career_Stats_Defensive.csv")
+career_stats_rb <- career_stats %>%
+  mutate(Name = gsub(" *, *", ", ", Name), 
+         Name = strsplit(as.character(Name), ", "), 
+         Name = sapply(Name, function(x) paste(trimws(rev(x)), collapse = " "))) 
+
+combine_results <- combine_results %>%
+  mutate(name = tolower(name))
+
+career_stats_rb <- career_stats_rb %>%
+  mutate(Name = tolower(Name))
+
+# Make common player names in both datasets
+combine_results <- combine_results %>%
+  mutate(name = tolower(name))
+
+
+career_stats_rb <- career_stats_rb %>%
+  mutate(Name = tolower(Name),
+         `Rushing Yards` = as.numeric(`Rushing Yards`),
+         `Rushing TDs` = as.numeric(`Rushing TDs`)) %>%
+  
+  # Replace errors with NA for non-numeric conversions
+  mutate(`Rushing Yards` = ifelse(is.na(`Rushing Yards`), 0, `Rushing Yards`),
+         `Rushing TDs` = ifelse(is.na(`Rushing TDs`), 0, `Rushing TDs`)) %>%
+  group_by(Name) %>%
+  summarise(`Total Rushing Yards` = sum(`Rushing Yards`, na.rm = TRUE),
+            `Total Rushing TDs` = sum(`Rushing TDs`, na.rm = TRUE))
+
+# Merge datasets based on player names
+merged_data_rb <- merge(combine_results, career_stats_rb, by.x = "name", by.y = "Name") |>
+  filter(pos == "RB")
+
+```
+
+```{r}
+
+combine_results <- read_csv("combine_results.csv")
+receiving_stats <- read_csv("Career_Stats_Receiving.csv")
+
+receiving_stats <- receiving_stats %>%
+  mutate(Name = gsub(" *, *", ", ", Name), 
+         Name = strsplit(as.character(Name), ", "), 
+         Name = sapply(Name, function(x) paste(str_trim(rev(x)), collapse = " "))) 
+
+combine_results <- combine_results %>%
+  mutate(name = tolower(name))
+
+receiving_stats <- receiving_stats %>%
+  mutate(Name = tolower(Name))
+
+# Make common player names in both datasets
+combine_results <- combine_results %>%
+  mutate(name = tolower(name))
+
+# Merge datasets based on player names
+merged_data_receiving <- merge(combine_results, receiving_stats, by.x = "name", by.y = "Name") %>%
+  filter(pos == "WR")
+```
+
+```{r}
+combine_results <- read_csv("combine_results.csv")
+defense_stats <- read_csv("Career_Stats_Defensive.csv")
+
+defense_stats <- defense_stats %>%
+  mutate(Name = gsub(" *, *", ", ", Name), 
+         Name = strsplit(as.character(Name), ", "), 
+         Name = sapply(Name, function(x) paste(str_trim(rev(x)), collapse = " "))) 
+
+combine_results <- combine_results %>%
+  mutate(name = tolower(name))
+
+defense_stats <- defense_stats %>%
+  mutate(Name = tolower(Name))
+
+# Make common player names in both datasets
+combine_results <- combine_results %>%
+  mutate(name = tolower(name))
+
+# Merge datasets based on player names
+merged_data_defense <- merge(combine_results, defense_stats, by.x = "name", by.y = "Name")
+```
+
+```{r}
+
+#Correlation Matrix for Rushing Stats
+data_subset <- merged_data_rb %>%
+  select(`40_yard`, bench_press, vert_leap_in, broad_jump_in, `Total Rushing Yards`, `Total Rushing TDs`)
+
+correlation_matrix_all <- cor(data_subset, use = "complete.obs")
+
+correlation_matrix_all
+
+corrplot(correlation_matrix_all, method = "circle", type = "upper", 
+         tl.col = "black", tl.srt = 45, 
+         title = "Correlation Matrix of Combine Attributes and Rushing Statistics"
+         ) 
+```
+
+```{r}
+#Correlation Matrix for Rushing Stats
+receiving_subset <- merged_data_receiving %>%
+  select(`40_yard`, bench_press, vert_leap_in, broad_jump_in, 
+         `Receiving Yards`, `Yards Per Reception`, `Yards Per Game`, 
+         `Receiving TDs`, `First Down Receptions`) %>%
+  mutate(across(everything(), as.numeric))
+correlation_matrix_all <- cor(receiving_subset, use = "complete.obs")
+
+correlation_matrix_all
+
+corrplot(correlation_matrix_all, method = "circle", type = "upper", 
+         tl.col = "black", tl.srt = 45, 
+         title = "Correlation Matrix of Combine Attributes and Receiving Statistics"
+         ) 
+```
+
+```{r}
+### Correlation Heatmap for defense
+
+#Correlation Matrix for Defensive Stats
+defense_subset <- merged_data_defense %>%
+  select(`40_yard`, bench_press, vert_leap_in, broad_jump_in, 
+         `Sacks`, `Safties`, `Passes Defended`, 
+         `Ints`, `Ints for TDs`)
+
+# Convert columns to numeric
+defense_subset <- defense_subset %>%
+  mutate(across(everything(), as.numeric))
+
+# Handle missing values
+defense_subset <- na.omit(defense_subset)
+
+# Calculate the correlation matrix
+correlation_matrix_all <- cor(defense_subset, use = "pairwise.complete.obs")
+
+# Create a correlation heatmap
+corrplot(correlation_matrix_all, method = "circle", type = "upper", 
+         tl.col = "black", tl.srt = 45, 
+         title = "Correlation Matrix of Defensive Stats")
+```
+
+```{r}
+
+# 40-Yard Dash Time vs. Total Rushing Yards
+ggplot(merged_data_rb, aes(x = `40_yard`, y = `Total Rushing Yards`)) +
+  geom_point(aes(color = `40_yard`), alpha = 0.7) +
+  geom_smooth(method = "lm", se = FALSE, color = "dodgerblue") +
+  labs(title = "Impact of 40-Yard Dash Time on NFL Success",
+       x = "40-Yard Dash Time (seconds)",
+       y = "Total Rushing Yards",
+       color = "40-Yard Dash Time") +
+  theme_minimal() +
+  scale_color_gradient(low = "dodgerblue", high = "darkorange")
+```
+
+```{r}
+
+# Bench Press Reps vs. Total Rushing Yards
+ggplot(merged_data_rb, aes(x = bench_press, y = `Total Rushing Yards`)) +
+  geom_point(aes(color = bench_press), alpha = 0.7) +
+  geom_smooth(method = "lm", se = FALSE, color = "dodgerblue") +
+  labs(title = "Impact of Bench Press Reps on NFL Success",
+       x = "Bench Press Reps",
+       y = "Total Rushing Yards",
+       color = "Bench Press Reps") +
+  theme_minimal() +
+  scale_color_gradient(low = "dodgerblue", high = "darkorange")
+```
+
+```{r}
+# Vertical Leap vs. Total Rushing Yards
+ggplot(merged_data_rb, aes(x = vert_leap_in, y = `Total Rushing Yards`)) +
+  geom_point(aes(color = vert_leap_in), alpha = 0.7) +
+  geom_smooth(method = "lm", se = FALSE, color = "dodgerblue") +
+  labs(title = "Impact of Vertical Leap on NFL Success",
+       x = "Vertical Leap (inches)",
+       y = "Total Rushing Yards",
+       color = "Vertical Leap") +
+  theme_minimal() +
+  scale_color_gradient(low = "dodgerblue", high = "darkorange")
+```
+
+```{r}
+
+# Broad Jump Distance vs. Total Rushing Yards
+ggplot(merged_data_rb, aes(x = broad_jump_in, y = `Total Rushing Yards`)) +
+  geom_point(aes(color = broad_jump_in), alpha = 0.7) +
+  geom_smooth(method = "lm", se = FALSE, color = "dodgerblue") +
+  labs(title = "Impact of Broad Jump Distance on NFL Success",
+       x = "Broad Jump Distance (inches)",
+       y = "Total Rushing Yards",
+       color = "Broad Jump Distance") +
+  theme_minimal() +
+  scale_color_gradient(low = "dodgerblue", high = "darkorange")
+```
+
+```{r}
+#| label: touchdowns
+# 40-Yard Dash Time vs. Total Rushing Touchdowns
+ggplot(merged_data_rb, aes(x = `40_yard`, y = `Total Rushing TDs`)) +
+  geom_point(aes(color = `40_yard`), alpha = 0.7) +
+  geom_smooth(method = "lm", se = FALSE, color = "dodgerblue") +
+  labs(title = "Impact of 40-Yard Dash Time on NFL Rushing Touchdowns",
+       x = "40-Yard Dash Time (seconds)",
+       y = "Total Rushing Touchdowns") +
+  theme_minimal() +
+  scale_color_gradient(low = "dodgerblue", high = "darkorange")
+
+# Bench Press Reps vs. Total Rushing Touchdowns
+ggplot(merged_data_rb, aes(x = bench_press, y = `Total Rushing TDs`)) +
+  geom_point(aes(color = bench_press), alpha = 0.7) +
+  geom_smooth(method = "lm", se = FALSE, color = "dodgerblue") +
+  labs(title = "Impact of Bench Press Reps on NFL Rushing Touchdowns",
+       x = "Bench Press Reps",
+       y = "Total Rushing Touchdowns") +
+  theme_minimal() +
+  scale_color_gradient(low = "dodgerblue", high = "darkorange")
+
+# Vertical Leap vs. Total Rushing Touchdowns
+ggplot(merged_data_rb, aes(x = vert_leap_in, y = `Total Rushing TDs`)) +
+  geom_point(aes(color = vert_leap_in), alpha = 0.7) +
+  geom_smooth(method = "lm", se = FALSE, color = "dodgerblue") +
+  labs(title = "Impact of Vertical Leap on NFL Rushing Touchdowns",
+       x = "Vertical Leap (inches)",
+       y = "Total Rushing Touchdowns") +
+  theme_minimal() +
+  scale_color_gradient(low = "dodgerblue", high = "darkorange")
+
+# Broad Jump Distance vs. Total Rushing Touchdowns
+ggplot(merged_data_rb, aes(x = broad_jump_in, y = `Total Rushing TDs`)) +
+  geom_point(aes(color = broad_jump_in), alpha = 0.7) +
+  geom_smooth(method = "lm", se = FALSE, color = "dodgerblue") +
+  labs(title = "Impact of Broad Jump Distance on NFL Rushing Touchdowns",
+       x = "Broad Jump Distance (inches)",
+       y = "Total Rushing Touchdowns") +
+  theme_minimal() + 
+  scale_color_gradient(low = "dodgerblue", high = "darkorange")
+```
+
+```         
+```
+
+```{r}
+### Scatterplots
+
+ggplot(merged_data_defense, aes(x = `40_yard`, y = `Total Tackles`, group = 1)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE, color = "red") +
+  labs(x = "40 Yard", y = "Total Tackles", 
+       title = "Scatterplot between 40 Yard Dash and Total Tackles")
+```
+
+```{r}
+
+# Convert "Sacks" column to numeric, ignoring non-numeric values
+merged_data_defense$Sacks <- as.numeric(as.character(merged_data_defense$Sacks))
+
+# Filter out NA values and plot with a trend line
+ggplot(merged_data_defense[!is.na(merged_data_defense$`40_yard`) & !is.na(merged_data_defense$Sacks), ], 
+       aes(x = `40_yard`, y = Sacks)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE, color = "red") +  # Add trend line
+  labs(x = "40 Yard", y = "Sacks", 
+       title = "Scatterplot between 40 Yard and Sacks with Trend Line") +
+  theme_minimal() +
+  scale_x_continuous(limits = c(min(merged_data_defense$`40_yard`, na.rm = TRUE) * 0.9,
+                                 max(merged_data_defense$`40_yard`, na.rm = TRUE) * 1.1)) +
+  scale_y_continuous(limits = c(min(merged_data_defense$Sacks, na.rm = TRUE) * 0.9,
+                                 max(merged_data_defense$Sacks, na.rm = TRUE) * 1.1))
 ```
