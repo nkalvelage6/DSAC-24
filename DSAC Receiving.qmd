@@ -4,7 +4,7 @@ format: html
 editor: visual
 ---
 
-```{r}
+```{r 9, warning=FALSE, message=FALSE}
 library(readr)
 library(tidyverse)
 library(tidymodels)
@@ -12,14 +12,14 @@ library(ggplot2)
 library(corrplot)
 ```
 
-```{r}
+```{r 10, warning=FALSE, message=FALSE}
 combine_results <- read_csv("combine_results.csv")
 receiving<- read_csv("Career_Stats_Receiving.csv")
 ```
 
 ### Creating One Single Dataset
 
-```{r}
+```{r 12}
 
 # Filter receiving data frame for Year >= 1987
 receiving <- subset(receiving, Year >= 1987)
@@ -27,14 +27,25 @@ receiving <- subset(receiving, Year >= 1987)
 # Reverse the order of names in the 'Name' column
 receiving$Name <- sapply(strsplit(receiving$Name, ", "), function(x) paste(rev(x), collapse = " "))
 
+# Make common player names in both datasets
+combine_results <- combine_results %>%
+  mutate(name=tolower(name))
+
+receiving <- receiving %>%
+  mutate(Name=tolower(Name))
+
 # Merge the data frames
 merged_data_receiving <- merge(combine_results, receiving, by.x = "name", by.y = "Name", all = TRUE)
+
+# Remove Duplicate Players
+merged_data_receiving <- merged_data_receiving %>% 
+  distinct()
 
 # Remove the 'pos' and 'Player Id' columns from merged_data_receiving
 merged_data_receiving <- merged_data_receiving[, !(names(merged_data_receiving) %in% c("pos", "Player Id"))]
 ```
 
-```{r}
+```{r 13}
 view(merged_data_receiving)
 ```
 
